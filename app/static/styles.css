@@ -1,0 +1,23 @@
+:root{--bg:#0f1724;--panel:#1d2635;--accent:#6c63ff;--accent2:#8a4fff;--text:#e8ebf5;--sub:#8b98b8;}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif}
+.container{max-width:520px;margin:0 auto;padding:24px}
+header{text-align:center;margin-top:8px}
+header h1{margin:0;font-size:28px}
+.subtitle{margin:0;color:var(--sub)}
+.stat{margin:24px 0}
+.stat .label{color:var(--sub);font-size:20px}
+.stat .value{font-weight:800;font-size:56px;letter-spacing:2px;color:#7d86ff}
+.card{display:flex;align-items:center;background:var(--panel);border-radius:16px;padding:16px;gap:12px;position:relative}
+.coin{width:44px;height:44px;border-radius:12px;background:#f7931a;display:flex;align-items:center;justify-content:center;font-size:22px}
+.details .amount{font-size:22px;font-weight:700}
+.details .usd{color:#59d98b;font-size:18px;margin-top:4px}
+.details .addr{color:var(--sub);margin-top:6px}
+.copy{position:absolute;right:12px;top:12px;background:transparent;border:0;color:#9fb0d0;font-size:18px;cursor:pointer}
+.chains .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0}
+.chip{background:var(--panel);color:var(--text);border:0;border-radius:12px;padding:12px 8px;cursor:pointer}
+.chip.active{outline:2px solid var(--accent)}
+.action{position:sticky;bottom:96px;background:linear-gradient(#0000,#0002);backdrop-filter:blur(4px);padding-top:16px}
+.input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid #2b3651;background:#11192a;color:var(--text)}
+.primary{width:100%;margin-top:14px;padding:14px 16px;border:0;border-radius:14px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:white;font-weight:700;cursor:pointer}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:#0a0f1b;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.fab{width:64px;height:64px;border-radius:50%;background:linear-gradient(90deg,var(--accent),var(--accent2));border:0;color:white;font-size:24px;margin-top:-24px}

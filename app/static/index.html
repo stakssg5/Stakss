@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Crypto PR+ Mini App</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Crypto PR+</h1>
+        <p class="subtitle">mini app</p>
+      </header>
+
+      <section class="stat">
+        <div class="label">Checked Wallets</div>
+        <div class="value" id="checked">3 830 672</div>
+      </section>
+
+      <section class="profits" id="result" hidden>
+        <div class="card">
+          <div class="coin">₿</div>
+          <div class="details">
+            <div class="amount"><span id="amount">0.00000 BTC</span></div>
+            <div class="usd" id="usd">$0.00</div>
+            <div class="addr" id="addr">wallet…</div>
+          </div>
+          <button id="copy" class="copy">⧉</button>
+        </div>
+      </section>
+
+      <section class="chains">
+        <div class="grid">
+          <button class="chip active" data-chain="btc">BTC</button>
+          <button class="chip" data-chain="eth">ETH</button>
+          <button class="chip" data-chain="bsc">BSC</button>
+          <button class="chip" data-chain="sol">SOL</button>
+          <button class="chip" data-chain="avax">AVAX</button>
+          <button class="chip" data-chain="ltc">LTC</button>
+          <button class="chip" data-chain="op">OP</button>
+          <button class="chip" data-chain="matic">Polygon</button>
+          <button class="chip" data-chain="ton">TON</button>
+          <button class="chip" data-chain="trx">TRX</button>
+        </div>
+      </section>
+
+      <section class="action">
+        <input id="address" class="input" placeholder="Enter wallet address" />
+        <button id="start" class="primary">Start search</button>
+      </section>
+
+      <footer class="tabs">
+        <button>My profile</button>
+        <button>Plans</button>
+        <button class="fab">🔎</button>
+        <button>Support</button>
+        <button>FAQ</button>
+      </footer>
+    </div>
+    <script src="/main.js"></script>
+  </body>
+</html>
