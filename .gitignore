@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Virtual envs
+.venv/
+venv/
+
+# Environment
+.env
+
+# Logs and data
+*.log
+transfer_log.txt
+
+# OS
+.DS_Store
+Thumbs.db
