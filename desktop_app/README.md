@@ -6,6 +6,7 @@ A simple desktop application that:
 - Automatically plays a forensic demo video whenever a search occurs
  - Includes a Geo tab to browse/search landmarks, government roles, and locals by country
  - Includes a Cameras tab to catalog/search lawful public or user-provided streams and play them
+ - People can be linked with specific cameras (authorized/private) for quick access (no unauthorized access)
 
 ## Run (Linux/Mac)
 ```bash
@@ -52,3 +53,11 @@ Place a demo video at `resources/forensic.mp4` (or change the path in `config.js
   - Add camera: provide name, location (optional), country, and URL/file path.
   - Delete selected cameras.
   - Sample demo entries use the local `resources/forensic.mp4` to illustrate playback.
+
+## Linking private/authorized cameras
+- Link cameras to a person record for quick access:
+  - In People tab: select a person.
+  - In Cameras tab: select a camera.
+  - Back in People tab: click "Link selected camera from Cameras tab" to associate it.
+  - Select linked entries and click "Unlink selected" to remove association.
+- Important: Only add and link cameras you own or are authorized to access. This app does not scan or bypass protections.

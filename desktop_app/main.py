@@ -22,6 +22,9 @@ from db import (
     search_cameras,
     insert_camera,
     delete_cameras,
+    list_cameras_for_person,
+    link_camera_to_person,
+    unlink_cameras_from_person,
 )
 
 APP_DIR = Path(__file__).resolve().parent
@@ -142,6 +145,19 @@ class MainWindow(QtWidgets.QMainWindow):
             placeholder.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             right_layout.addWidget(placeholder)
 
+        # Person-camera linking panel
+        link_group = QtWidgets.QGroupBox("Linked cameras (authorized only)")
+        link_layout = QtWidgets.QVBoxLayout(link_group)
+        self.person_cam_list = QtWidgets.QListWidget()
+        link_layout.addWidget(self.person_cam_list)
+        link_btns = QtWidgets.QHBoxLayout()
+        self.link_add_btn = QtWidgets.QPushButton("Link selected camera from Cameras tab")
+        self.link_del_btn = QtWidgets.QPushButton("Unlink selected")
+        link_btns.addWidget(self.link_add_btn)
+        link_btns.addWidget(self.link_del_btn)
+        link_layout.addLayout(link_btns)
+        right_layout.addWidget(link_group)
+
         ppl_layout.addWidget(right, 5)
 
         tabs.addTab(people_tab, "People")
@@ -257,6 +273,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cam_add_btn.clicked.connect(self.on_cam_add)
         self.cam_del_btn.clicked.connect(self.on_cam_delete)
 
+        self.list_view.itemSelectionChanged.connect(self.refresh_person_cameras)
+        self.link_add_btn.clicked.connect(self.on_link_selected_camera_to_person)
+        self.link_del_btn.clicked.connect(self.on_unlink_selected_cameras)
+
     @QtCore.Slot()
     def on_search(self):
         text = self.search_edit.text().strip()
@@ -306,6 +326,56 @@ class MainWindow(QtWidgets.QMainWindow):
             self.media_player.play()
         except Exception:
             pass
+
+    def _selected_person_id(self) -> Optional[int]:
+        # Mirror current People results to get ID by row
+        text = self.search_edit.text().strip()
+        results = search_people(text, limit=500)
+        selected = self.list_view.selectedIndexes()
+        if not selected:
+            return None
+        row = selected[0].row()
+        if row < 0 or row >= len(results):
+            return None
+        return int(results[row][0])
+
+    @QtCore.Slot()
+    def refresh_person_cameras(self):
+        person_id = self._selected_person_id()
+        self.person_cam_list.clear()
+        if person_id is None:
+            return
+        for cam_id, name, location, country_name, url in list_cameras_for_person(person_id):
+            item = QtWidgets.QListWidgetItem(f"{name} — {location} ({country_name})")
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, cam_id)
+            self.person_cam_list.addItem(item)
+
+    @QtCore.Slot()
+    def on_link_selected_camera_to_person(self):
+        person_id = self._selected_person_id()
+        if person_id is None:
+            return
+        # Use current selection in Cameras tab to link
+        items = self.cam_list.selectedItems()
+        if not items:
+            return
+        data = items[0].data(QtCore.Qt.ItemDataRole.UserRole)
+        cam_id = int(data.get("id"))
+        link_camera_to_person(person_id, cam_id)
+        self.refresh_person_cameras()
+
+    @QtCore.Slot()
+    def on_unlink_selected_cameras(self):
+        person_id = self._selected_person_id()
+        if person_id is None:
+            return
+        ids = []
+        for item in self.person_cam_list.selectedItems():
+            ids.append(int(item.data(QtCore.Qt.ItemDataRole.UserRole)))
+        if not ids:
+            return
+        unlink_cameras_from_person(person_id, ids)
+        self.refresh_person_cameras()
 
     @QtCore.Slot()
     def on_cam_search(self):
