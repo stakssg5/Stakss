@@ -37,13 +37,22 @@ def load_config() -> dict:
 
 
 class LoginDialog(QtWidgets.QDialog):
-    def __init__(self, expected_user: str, expected_pass: str):
+    def __init__(self, expected_user: str, expected_pass: str, logo_path: Optional[Path] = None):
         super().__init__()
         self.setWindowTitle("Secure Login")
         self.setModal(True)
         self.setFixedSize(360, 220)
 
         layout = QtWidgets.QVBoxLayout(self)
+
+        # Logo (optional)
+        if logo_path and logo_path.exists():
+            logo_label = QtWidgets.QLabel()
+            pix = QtGui.QPixmap(str(logo_path))
+            if not pix.isNull():
+                logo_label.setPixmap(pix.scaledToWidth(120, QtCore.Qt.TransformationMode.SmoothTransformation))
+                logo_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                layout.addWidget(logo_label)
 
         title = QtWidgets.QLabel("Account Login")
         font = title.font()
@@ -521,7 +530,9 @@ def run():
 
     app = QtWidgets.QApplication([])
 
-    login = LoginDialog(config["login"]["username"], config["login"]["password"])
+    branding_logo = config.get("branding", {}).get("logo_path")
+    logo_path = (APP_DIR / branding_logo).resolve() if branding_logo else None
+    login = LoginDialog(config["login"]["username"], config["login"]["password"], logo_path=logo_path)
     if login.exec() != QtWidgets.QDialog.DialogCode.Accepted:
         return
 

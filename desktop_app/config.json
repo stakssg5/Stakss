@@ -8,5 +8,8 @@
   },
   "video": {
     "path": "resources/forensic.mp4"
+  },
+  "branding": {
+    "logo_path": "resources/logo.png"
   }
 }
