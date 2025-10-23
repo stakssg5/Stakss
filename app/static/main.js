@@ -1,3 +1,19 @@
+// Require auth token; redirect to login if missing/invalid
+(async () => {
+  const token = (() => { try { return localStorage.getItem('auth_token'); } catch { return null; }})();
+  if (!token) {
+    location.href = `/login.html?next=${encodeURIComponent(location.pathname || '/')}`;
+    return;
+  }
+  try {
+    const resp = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` }});
+    if (!resp.ok) throw new Error('unauthorized');
+  } catch {
+    location.href = `/login.html?next=${encodeURIComponent(location.pathname || '/')}`;
+    return;
+  }
+})();
+
 const tg = window.Telegram?.WebApp;
 if (tg) {
   tg.ready();
