@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from .services.cards import generate_cards, CARD_SPECS
+
 from .services.prices import PriceService
 from .services.balances import BalanceService
 
@@ -51,6 +53,28 @@ async def check_balances(address: str, chain: str = "btc") -> Dict[str, Any]:
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ----- Test credit card generator (sandbox) -----
+@app.get("/api/cards/brands")
+def get_card_brands() -> Dict[str, List[Dict[str, str]]]:
+    brands = [{"key": k, "label": v.brand} for k, v in CARD_SPECS.items()]
+    brands.sort(key=lambda x: x["label"])  # stable order for UI
+    return {"brands": brands}
+
+
+@app.get("/api/cards")
+def get_cards(count: int = 1, brand: Optional[str] = None) -> Dict[str, Any]:
+    if count < 1 or count > 20:
+        raise HTTPException(status_code=400, detail="count must be between 1 and 20")
+    try:
+        cards = generate_cards(count=count, brand=brand)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "cards": cards,
+        "note": "Sandbox test numbers for development and QA only; not valid for payments.",
+    }
 
 
 # ----- Mock transfer endpoint for safe demo -----

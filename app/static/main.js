@@ -46,3 +46,69 @@ startBtn.addEventListener('click', async () => {
     startBtn.textContent = 'Start search';
   }
 });
+
+// ---- Test card generator ----
+const cardBrandSel = document.getElementById('cardBrand');
+const cardCountInput = document.getElementById('cardCount');
+const genCardsBtn = document.getElementById('genCards');
+const cardListEl = document.getElementById('cardList');
+
+async function loadBrands() {
+  try {
+    const resp = await fetch('/api/cards/brands');
+    if (!resp.ok) return;
+    const data = await resp.json();
+    (data.brands || []).forEach(({ key, label }) => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = label;
+      cardBrandSel.appendChild(opt);
+    });
+  } catch {}
+}
+
+function formatCardLine(c) {
+  const mm = String(c.expiry_month).padStart(2, '0');
+  const yy = String(c.expiry_year).slice(-2);
+  return `${c.brand}  ${c.number}  ${mm}/${yy}  CVV ${c.cvv}`;
+}
+
+async function generateCards() {
+  const count = Math.max(1, Math.min(20, Number(cardCountInput.value) || 1));
+  const brand = cardBrandSel.value || '';
+  genCardsBtn.disabled = true;
+  genCardsBtn.textContent = 'Generating…';
+  try {
+    const qs = new URLSearchParams({ count: String(count) });
+    if (brand) qs.set('brand', brand);
+    const resp = await fetch(`/api/cards?${qs.toString()}`);
+    if (!resp.ok) throw new Error('Request failed');
+    const data = await resp.json();
+    const cards = data.cards || [];
+    cardListEl.innerHTML = '';
+    cards.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'card-row';
+      const span = document.createElement('div');
+      span.className = 'card-line';
+      span.textContent = formatCardLine(c);
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.textContent = 'Copy';
+      btn.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(span.textContent); } catch {}
+      });
+      row.appendChild(span);
+      row.appendChild(btn);
+      cardListEl.appendChild(row);
+    });
+  } catch (e) {
+    alert('Unable to generate cards');
+  } finally {
+    genCardsBtn.disabled = false;
+    genCardsBtn.textContent = 'Generate';
+  }
+}
+
+genCardsBtn.addEventListener('click', generateCards);
+loadBrands();
