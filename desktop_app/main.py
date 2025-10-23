@@ -26,6 +26,7 @@ from db import (
     list_cameras_for_person,
     link_camera_to_person,
     unlink_cameras_from_person,
+    get_person,
 )
 from geo import geolocate
 
@@ -172,6 +173,18 @@ class MainWindow(QtWidgets.QMainWindow):
         link_btns.addWidget(self.link_add_btn)
         link_btns.addWidget(self.link_del_btn)
         link_layout.addLayout(link_btns)
+        # Auto-cameras based on person's country
+        auto_group = QtWidgets.QGroupBox("Nearby cameras (by person country)")
+        auto_layout = QtWidgets.QVBoxLayout(auto_group)
+        self.auto_cam_list = QtWidgets.QListWidget()
+        auto_layout.addWidget(self.auto_cam_list)
+        auto_btns = QtWidgets.QHBoxLayout()
+        self.auto_link_btn = QtWidgets.QPushButton("Link selected auto camera")
+        self.auto_delete_btn = QtWidgets.QPushButton("Delete selected auto camera")
+        auto_btns.addWidget(self.auto_link_btn)
+        auto_btns.addWidget(self.auto_delete_btn)
+        auto_layout.addLayout(auto_btns)
+        link_layout.addWidget(auto_group)
         right_layout.addWidget(link_group)
 
         ppl_layout.addWidget(right, 5)
@@ -309,6 +322,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.list_view.itemSelectionChanged.connect(self.refresh_person_cameras)
         self.link_add_btn.clicked.connect(self.on_link_selected_camera_to_person)
         self.link_del_btn.clicked.connect(self.on_unlink_selected_cameras)
+        self.auto_link_btn.clicked.connect(self.on_auto_link)
+        self.auto_delete_btn.clicked.connect(self.on_auto_delete)
 
         self.geoip_btn.clicked.connect(self.on_geoip_lookup)
 
@@ -381,12 +396,30 @@ class MainWindow(QtWidgets.QMainWindow):
     def refresh_person_cameras(self):
         person_id = self._selected_person_id()
         self.person_cam_list.clear()
+        self.auto_cam_list.clear()
         if person_id is None:
             return
         for cam_id, name, location, country_name, url in list_cameras_for_person(person_id):
             item = QtWidgets.QListWidgetItem(f"{name} — {location} ({country_name})")
             item.setData(QtCore.Qt.ItemDataRole.UserRole, cam_id)
             self.person_cam_list.addItem(item)
+        # Populate auto cameras by person's country (public, fixed)
+        person = get_person(person_id)
+        if person:
+            _pid, _first, _last, _email, _city, country_name = person
+            # Find cameras with matching country
+            cams = search_cameras(
+                query="",
+                country_code=None,  # we'll match by country name field from result
+                public_only=True,
+                fixed_only=True,
+                limit=200,
+            )
+            for cam_id, name, location, c_name, url, is_public, is_fixed in cams:
+                if c_name == country_name:
+                    item = QtWidgets.QListWidgetItem(f"{name} — {location} ({c_name})")
+                    item.setData(QtCore.Qt.ItemDataRole.UserRole, {"id": cam_id, "url": url})
+                    self.auto_cam_list.addItem(item)
 
     @QtCore.Slot()
     def on_link_selected_camera_to_person(self):
@@ -413,6 +446,31 @@ class MainWindow(QtWidgets.QMainWindow):
         if not ids:
             return
         unlink_cameras_from_person(person_id, ids)
+        self.refresh_person_cameras()
+
+    @QtCore.Slot()
+    def on_auto_link(self):
+        person_id = self._selected_person_id()
+        if person_id is None:
+            return
+        items = self.auto_cam_list.selectedItems()
+        if not items:
+            return
+        data = items[0].data(QtCore.Qt.ItemDataRole.UserRole)
+        cam_id = int(data.get("id"))
+        link_camera_to_person(person_id, cam_id)
+        self.refresh_person_cameras()
+
+    @QtCore.Slot()
+    def on_auto_delete(self):
+        # Deletes the actual camera record from the catalog
+        ids = []
+        for item in self.auto_cam_list.selectedItems():
+            data = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            ids.append(int(data.get("id")))
+        if not ids:
+            return
+        delete_cameras(ids)
         self.refresh_person_cameras()
 
     @QtCore.Slot()

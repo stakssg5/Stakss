@@ -279,6 +279,33 @@ def list_countries() -> List[Tuple[str, str]]:
         conn.close()
 
 
+def get_country_code_by_name(country_name: str) -> Optional[str]:
+    name = " ".join(country_name.strip().split())
+    if not name:
+        return None
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT code FROM country WHERE name = ?", (name,))
+        row = cur.fetchone()
+        return row[0] if row else None
+    finally:
+        conn.close()
+
+
+def get_person(person_id: int) -> Optional[Tuple[int, str, str, str, str, str]]:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, first_name, last_name, email, city, country FROM person WHERE id = ?",
+            (person_id,),
+        )
+        return cur.fetchone()
+    finally:
+        conn.close()
+
+
 def search_landmarks(query: str, country_code: Optional[str] = None, limit: int = 50) -> List[Tuple[int, str, str, str]]:
     q = f"%{query.lower()}%"
     conn = get_connection()
