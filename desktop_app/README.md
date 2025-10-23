@@ -7,6 +7,7 @@ A simple desktop application that:
  - Includes a Geo tab to browse/search landmarks, government roles, and locals by country
  - Includes a Cameras tab to catalog/search lawful public or user-provided streams and play them
  - People can be linked with specific cameras (authorized/private) for quick access (no unauthorized access)
+ - Geolocate tab: approximate IP/domain geolocation lookup via a public provider
 
 ## Run (Linux/Mac)
 ```bash
@@ -53,6 +54,14 @@ Place a demo video at `resources/forensic.mp4` (or change the path in `config.js
   - Add camera: provide name, location (optional), country, and URL/file path.
   - Delete selected cameras.
   - Sample demo entries use the local `resources/forensic.mp4` to illustrate playback.
+
+## Geolocation (approximate)
+- Purpose: given an IP or domain, fetch approximate location data (city/region/country, lat/lon when available) from a public geolocation API.
+- Configure provider in `config.json` under `geolocation` (default: `ipapi.co`).
+- Open the Geolocate tab, enter IP/domain, and click Lookup.
+- Notes:
+  - Accuracy varies; results can be approximate or stale.
+  - Respect privacy and applicable laws; do not misuse location data.
 
 ## Linking private/authorized cameras
 - Link cameras to a person record for quick access:

@@ -11,5 +11,10 @@
   },
   "branding": {
     "logo_path": "resources/fbi_logo.png"
+  },
+  "geolocation": {
+    "provider": "ipapi.co", 
+    "endpoint": "https://ipapi.co/{target}/json/",
+    "api_key": null
   }
 }

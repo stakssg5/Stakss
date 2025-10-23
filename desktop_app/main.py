@@ -26,6 +26,7 @@ from db import (
     link_camera_to_person,
     unlink_cameras_from_person,
 )
+from geo import geolocate
 
 APP_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = APP_DIR / "config.json"
@@ -268,6 +269,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
         tabs.addTab(cam_tab, "Cameras")
 
+        # Tab 4: Geolocate
+        geoip_tab = QtWidgets.QWidget()
+        geoip_layout = QtWidgets.QVBoxLayout(geoip_tab)
+        geoip_form = QtWidgets.QHBoxLayout()
+        self.geoip_target = QtWidgets.QLineEdit()
+        self.geoip_target.setPlaceholderText("Enter IP address or domain name…")
+        self.geoip_btn = QtWidgets.QPushButton("Lookup")
+        geoip_form.addWidget(self.geoip_target, 1)
+        geoip_form.addWidget(self.geoip_btn)
+        geoip_layout.addLayout(geoip_form)
+
+        self.geoip_output = QtWidgets.QTextEdit()
+        self.geoip_output.setReadOnly(True)
+        geoip_layout.addWidget(self.geoip_output, 1)
+
+        tabs.addTab(geoip_tab, "Geolocate")
+
         # Wire search
         self.search_edit.textChanged.connect(self.on_search)
         self.list_view.itemSelectionChanged.connect(self.on_select)
@@ -285,6 +303,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.list_view.itemSelectionChanged.connect(self.refresh_person_cameras)
         self.link_add_btn.clicked.connect(self.on_link_selected_camera_to_person)
         self.link_del_btn.clicked.connect(self.on_unlink_selected_cameras)
+
+        self.geoip_btn.clicked.connect(self.on_geoip_lookup)
 
     @QtCore.Slot()
     def on_search(self):
@@ -471,6 +491,30 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         delete_cameras(ids)
         self.on_cam_search()
+
+    @QtCore.Slot()
+    def on_geoip_lookup(self):
+        target = self.geoip_target.text().strip()
+        if not target:
+            return
+        cfg = load_config().get("geolocation", {})
+        endpoint = cfg.get("endpoint", "https://ipapi.co/{target}/json/")
+        api_key = cfg.get("api_key")
+        self.geoip_output.setPlainText("Looking up…")
+        QtCore.QCoreApplication.processEvents()
+        try:
+            data = geolocate(target, endpoint_template=endpoint, api_key=api_key)
+            lines = []
+            for k in [
+                "ip","city","region","country","country_code","postal","latitude","longitude","timezone","org"
+            ]:
+                if data.get(k) is not None:
+                    lines.append(f"{k}: {data.get(k)}")
+            if data.get("error"):
+                lines.append(f"error: {data['error']}")
+            self.geoip_output.setPlainText("\n".join(lines) or "No data")
+        except Exception as e:
+            self.geoip_output.setPlainText(f"Lookup failed: {e}")
 
     @QtCore.Slot()
     def on_delete_people(self):
