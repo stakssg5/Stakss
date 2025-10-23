@@ -12,6 +12,7 @@ from db import (
     seed_geo_if_empty,
     seed_camera_if_empty,
     search_people,
+    search_people_exact,
     list_countries,
     search_landmarks,
     search_government,
@@ -114,6 +115,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.search_edit = QtWidgets.QLineEdit()
         self.search_edit.setPlaceholderText("Type a name, email, city, country…")
         left_layout.addWidget(self.search_edit)
+
+        exact_row = QtWidgets.QHBoxLayout()
+        self.exact_check = QtWidgets.QCheckBox("Exact name match")
+        exact_row.addWidget(self.exact_check)
+        left_layout.addLayout(exact_row)
 
         self.list_view = QtWidgets.QListWidget()
         left_layout.addWidget(self.list_view, 1)
@@ -312,7 +318,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.list_view.clear()
         if not text:
             return
-        results = search_people(text, limit=50)
+        if self.exact_check.isChecked():
+            results = search_people_exact(text, limit=50)
+        else:
+            results = search_people(text, limit=50)
         for _id, first, last, email, city, country in results:
             self.list_view.addItem(f"{first} {last} <{email}> — {city}, {country}")
         # Auto play video when a search occurs

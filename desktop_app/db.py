@@ -247,6 +247,28 @@ def search_people(query: str, limit: int = 25) -> List[Tuple[int, str, str, str,
         conn.close()
 
 
+def search_people_exact(name: str, limit: int = 25) -> List[Tuple[int, str, str, str, str, str]]:
+    norm = " ".join(name.strip().split()).lower()
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, first_name, last_name, email, city, country
+            FROM person
+            WHERE lower(first_name || ' ' || last_name) = ?
+               OR lower(first_name) = ?
+               OR lower(last_name) = ?
+            ORDER BY last_name, first_name
+            LIMIT ?
+            """,
+            (norm, norm, norm, limit),
+        )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
 def list_countries() -> List[Tuple[str, str]]:
     conn = get_connection()
     try:
