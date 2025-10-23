@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Optional
+import hashlib
+import secrets
+import base64
 
 from PySide6 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
 
@@ -39,12 +42,40 @@ def load_config() -> dict:
         return json.load(f)
 
 
+def save_config(cfg: dict) -> None:
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+
+
+def _hash_password(password: str, salt_b64: str, iterations: int, algo: str = "sha256") -> str:
+    salt = base64.b64decode(salt_b64.encode("utf-8"))
+    dk = hashlib.pbkdf2_hmac(algo, password.encode("utf-8"), salt, iterations)
+    return base64.b64encode(dk).decode("utf-8")
+
+
+def _verify_password(input_password: str, login_cfg: dict) -> bool:
+    # Support hashed credentials if present, else fallback to plain text.
+    if "password_hash" in login_cfg and "password_salt" in login_cfg:
+        algo = login_cfg.get("hash_algo", "sha256")
+        iterations = int(login_cfg.get("iterations", 200_000))
+        expected = login_cfg.get("password_hash") or ""
+        salt_b64 = login_cfg.get("password_salt") or ""
+        computed = _hash_password(input_password, salt_b64, iterations, algo)
+        # Constant-time compare
+        return hashlib.compare_digest(computed, expected)
+    # Plain-text fallback
+    return input_password == (login_cfg.get("password") or "")
+
+
 class LoginDialog(QtWidgets.QDialog):
-    def __init__(self, expected_user: str, expected_pass: str, logo_path: Optional[Path] = None):
+    def __init__(self, expected_user: str, login_cfg: dict, logo_path: Optional[Path] = None):
         super().__init__()
         self.setWindowTitle("Secure Login")
         self.setModal(True)
         self.setFixedSize(360, 220)
+        self._expected_user = expected_user
+        self._login_cfg = login_cfg
+        self._failures = 0
 
         layout = QtWidgets.QVBoxLayout(self)
 
@@ -78,16 +109,100 @@ class LoginDialog(QtWidgets.QDialog):
         layout.addWidget(self.error_label)
 
         btn = QtWidgets.QPushButton("Login")
-        btn.clicked.connect(lambda: self._try_login(expected_user, expected_pass))
+        self._login_btn = btn
+        btn.clicked.connect(self._try_login)
         layout.addWidget(btn)
 
         self.user_edit.setFocus()
 
-    def _try_login(self, expected_user: str, expected_pass: str):
-        if self.user_edit.text() == expected_user and self.pass_edit.text() == expected_pass:
+    def _try_login(self):
+        if self.user_edit.text() == self._expected_user and _verify_password(self.pass_edit.text(), self._login_cfg):
             self.accept()
+            return
+        self._failures += 1
+        if self._failures >= 5:
+            self.error_label.setText("Too many attempts. Try again in 30s.")
+            self._login_btn.setDisabled(True)
+            QtCore.QTimer.singleShot(30_000, lambda: self._login_btn.setDisabled(False))
+            self._failures = 0
         else:
             self.error_label.setText("Invalid credentials")
+
+
+class SettingsDialog(QtWidgets.QDialog):
+    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
+        self.setWindowTitle("Settings - Credentials")
+        self.setModal(True)
+        self.setFixedSize(420, 260)
+
+        cfg = load_config()
+        login_cfg = cfg.get("login", {})
+
+        layout = QtWidgets.QFormLayout(self)
+        self.username = QtWidgets.QLineEdit()
+        self.username.setText(login_cfg.get("username") or "")
+        self.new_password = QtWidgets.QLineEdit()
+        self.new_password.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
+        self.confirm_password = QtWidgets.QLineEdit()
+        self.confirm_password.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
+        self.show_pw = QtWidgets.QCheckBox("Show password")
+        self.show_pw.stateChanged.connect(self._toggle_echo)
+        self.status = QtWidgets.QLabel()
+        self.status.setStyleSheet("color: #8b98b8")
+
+        layout.addRow("Username", self.username)
+        layout.addRow("New password", self.new_password)
+        layout.addRow("Confirm password", self.confirm_password)
+        layout.addRow("", self.show_pw)
+        layout.addRow("", self.status)
+
+        btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Save | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        btns.accepted.connect(self._on_save)
+        btns.rejected.connect(self.reject)
+        layout.addRow(btns)
+
+    def _toggle_echo(self):
+        mode = QtWidgets.QLineEdit.EchoMode.Normal if self.show_pw.isChecked() else QtWidgets.QLineEdit.EchoMode.Password
+        self.new_password.setEchoMode(mode)
+        self.confirm_password.setEchoMode(mode)
+
+    def _on_save(self):
+        username = self.username.text().strip()
+        pw1 = self.new_password.text()
+        pw2 = self.confirm_password.text()
+        if not username:
+            self.status.setText("Username required")
+            return
+        if pw1 != pw2:
+            self.status.setText("Passwords do not match")
+            return
+        if len(pw1) < 8:
+            self.status.setText("Use at least 8 characters")
+            return
+        # Derive hash
+        salt = secrets.token_bytes(16)
+        salt_b64 = base64.b64encode(salt).decode("utf-8")
+        iterations = 300_000
+        algo = "sha256"
+        pw_hash = _hash_password(pw1, salt_b64, iterations, algo)
+
+        cfg = load_config()
+        cfg.setdefault("login", {})
+        cfg["login"]["username"] = username
+        cfg["login"]["password_hash"] = pw_hash
+        cfg["login"]["password_salt"] = salt_b64
+        cfg["login"]["iterations"] = iterations
+        cfg["login"]["hash_algo"] = algo
+        # Remove plain password if present
+        if "password" in cfg["login"]:
+            del cfg["login"]["password"]
+        try:
+            save_config(cfg)
+        except Exception as e:
+            self.status.setText(f"Failed to save: {e}")
+            return
+        self.accept()
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -95,6 +210,13 @@ class MainWindow(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("Forensic Search Console")
         self.resize(1000, 640)
+
+        # Menu
+        menubar = self.menuBar()
+        settings_menu = menubar.addMenu("Settings")
+        act_credentials = QtWidgets.QAction("Credentials…", self)
+        act_credentials.triggered.connect(self.open_settings)
+        settings_menu.addAction(act_credentials)
 
         tabs = QtWidgets.QTabWidget()
         self.setCentralWidget(tabs)
@@ -560,6 +682,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.on_cam_search()
 
     @QtCore.Slot()
+    def open_settings(self):
+        dlg = SettingsDialog(self)
+        dlg.exec()
+
+    @QtCore.Slot()
     def on_geoip_lookup(self):
         target = self.geoip_target.text().strip()
         if not target:
@@ -643,7 +770,7 @@ def run():
 
     branding_logo = config.get("branding", {}).get("logo_path")
     logo_path = (APP_DIR / branding_logo).resolve() if branding_logo else None
-    login = LoginDialog(config["login"]["username"], config["login"]["password"], logo_path=logo_path)
+    login = LoginDialog(config["login"]["username"], config.get("login", {}), logo_path=logo_path)
     if login.exec() != QtWidgets.QDialog.DialogCode.Accepted:
         return
 
