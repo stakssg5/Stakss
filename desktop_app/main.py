@@ -6,6 +6,9 @@ from typing import Optional
 import hashlib
 import secrets
 import base64
+import os
+import sys
+import shutil
 
 from PySide6 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
 
@@ -34,16 +37,63 @@ from db import (
 from geo import geolocate
 
 APP_DIR = Path(__file__).resolve().parent
-CONFIG_PATH = APP_DIR / "config.json"
+APP_NAME = "ForensicSearch"
+
+
+def _get_user_config_dir() -> Path:
+    # Windows: %APPDATA%\ForensicSearch
+    if sys.platform.startswith("win"):
+        base = os.getenv("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        return Path(base) / APP_NAME
+    # macOS: ~/Library/Application Support/ForensicSearch
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / APP_NAME
+    # Linux/other: $XDG_CONFIG_HOME/ForensicSearch or ~/.config/ForensicSearch
+    base = os.getenv("XDG_CONFIG_HOME")
+    cfg_home = Path(base) if base else (Path.home() / ".config")
+    return cfg_home / APP_NAME
+
+
+USER_CONFIG_PATH = _get_user_config_dir() / "config.json"
+DEFAULT_CONFIG_PATH = APP_DIR / "config.json"
 
 
 def load_config() -> dict:
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+    # Prefer user config; if missing, seed from default bundled config
+    if USER_CONFIG_PATH.exists():
+        with open(USER_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    USER_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if DEFAULT_CONFIG_PATH.exists():
+        try:
+            shutil.copyfile(DEFAULT_CONFIG_PATH, USER_CONFIG_PATH)
+            with open(USER_CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    # Fallback minimal config if no default available
+    cfg = {
+        "login": {"username": "admin", "password": "admin123"},
+        "video": {"path": "resources/forensic.mp4"},
+        "branding": {"logo_path": "resources/logo.png"},
+        "geolocation": {
+            "provider": "ipapi.co",
+            "endpoint": "https://ipapi.co/{target}/json/",
+            "api_key": None,
+        },
+        "auth": {"require_login": True},
+    }
+    try:
+        with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception:
+        pass
+    return cfg
 
 
 def save_config(cfg: dict) -> None:
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+    USER_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
 

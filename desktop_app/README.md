@@ -1,7 +1,7 @@
 # Forensic Search Desktop App
 
 A simple desktop application that:
-- Shows a login screen (credentials in `config.json`)
+- Shows a login screen (credentials stored in user config)
 - Lets you search a local SQLite database of random people
 - Automatically plays a forensic demo video whenever a search occurs
  - Includes a Geo tab to browse/search landmarks, government roles, and locals by country
@@ -31,6 +31,14 @@ build_windows.bat
 ```
 
 Place a demo video at `resources/forensic.mp4` (or change the path in `config.json`).
+
+### Settings persistence (even one-file EXE)
+- Settings are stored per user in the OS config directory:
+  - Windows: `%APPDATA%/ForensicSearch/config.json`
+  - macOS: `~/Library/Application Support/ForensicSearch/config.json`
+  - Linux: `~/.config/ForensicSearch/config.json`
+- On first run, the app seeds from the bundled `config.json`.
+- Use Settings → Credentials… to change username/password; changes persist.
 
 ## Geo features
 - Countries, landmarks, and sample government roles are seeded on first run.
