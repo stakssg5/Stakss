@@ -46,3 +46,41 @@ startBtn.addEventListener('click', async () => {
     startBtn.textContent = 'Start search';
   }
 });
+
+// ---- CC generator ----
+const ccBtn = document.getElementById('cc-generate');
+const ccOut = document.getElementById('cc-output');
+const ccNetwork = document.getElementById('cc-network');
+const ccBin = document.getElementById('cc-bin');
+const ccLen = document.getElementById('cc-length');
+const ccQty = document.getElementById('cc-qty');
+
+if (ccBtn) {
+  ccBtn.addEventListener('click', async () => {
+    ccBtn.disabled = true;
+    ccBtn.textContent = 'Generating…';
+    ccOut.textContent = '';
+    try {
+      const payload = {
+        network: ccNetwork.value || null,
+        bin: ccBin.value || null,
+        length: ccLen.value ? Number(ccLen.value) : null,
+        quantity: ccQty.value ? Number(ccQty.value) : 5,
+      };
+      const resp = await fetch('/api/cc/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) throw new Error('Request failed');
+      const data = await resp.json();
+      const lines = (data.cards || []).join('\n');
+      ccOut.textContent = lines;
+    } catch (e) {
+      ccOut.textContent = 'Error generating numbers';
+    } finally {
+      ccBtn.disabled = false;
+      ccBtn.textContent = 'Generate CC numbers';
+    }
+  });
+}
