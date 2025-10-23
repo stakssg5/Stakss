@@ -72,11 +72,24 @@ def init_db() -> None:
             )
             """
         )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS person_camera (
+                person_id INTEGER NOT NULL,
+                camera_id INTEGER NOT NULL,
+                PRIMARY KEY(person_id, camera_id),
+                FOREIGN KEY(person_id) REFERENCES person(id) ON DELETE CASCADE,
+                FOREIGN KEY(camera_id) REFERENCES camera(id) ON DELETE CASCADE
+            )
+            """
+        )
         # Helpful search indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_person_country ON person(country)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_landmark_country ON landmark(country_code)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_gov_country ON government(country_code)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_camera_country ON camera(country_code)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_person_camera_person ON person_camera(person_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_person_camera_camera ON person_camera(camera_id)")
         conn.commit()
     finally:
         conn.close()
@@ -435,6 +448,55 @@ def delete_cameras(ids: List[int]) -> int:
     try:
         cur = conn.cursor()
         cur.executemany("DELETE FROM camera WHERE id = ?", [(i,) for i in ids])
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def list_cameras_for_person(person_id: int) -> List[Tuple[int, str, str, str, str]]:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT cam.id, cam.name, COALESCE(cam.location, ''), c.name, cam.url
+            FROM person_camera pc
+            JOIN camera cam ON cam.id = pc.camera_id
+            JOIN country c ON c.code = cam.country_code
+            WHERE pc.person_id = ?
+            ORDER BY cam.name
+            """,
+            (person_id,),
+        )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def link_camera_to_person(person_id: int, camera_id: int) -> None:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT OR IGNORE INTO person_camera(person_id, camera_id) VALUES (?, ?)",
+            (person_id, camera_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def unlink_cameras_from_person(person_id: int, camera_ids: List[int]) -> int:
+    if not camera_ids:
+        return 0
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.executemany(
+            "DELETE FROM person_camera WHERE person_id = ? AND camera_id = ?",
+            [(person_id, cid) for cid in camera_ids],
+        )
         conn.commit()
         return cur.rowcount or 0
     finally:
