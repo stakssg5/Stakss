@@ -15,6 +15,9 @@ from db import (
     search_landmarks,
     search_government,
     search_people_by_country,
+    delete_people,
+    delete_landmarks,
+    delete_government,
 )
 
 APP_DIR = Path(__file__).resolve().parent
@@ -98,6 +101,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.list_view = QtWidgets.QListWidget()
         left_layout.addWidget(self.list_view, 1)
 
+        self.delete_people_btn = QtWidgets.QPushButton("Delete selected")
+        self.delete_people_btn.clicked.connect(self.on_delete_people)
+        left_layout.addWidget(self.delete_people_btn)
+
         ppl_layout.addWidget(left, 3)
 
         right = QtWidgets.QWidget()
@@ -166,6 +173,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.locals_list = QtWidgets.QListWidget()
         splitter.addWidget(self.locals_list)
 
+        # Delete buttons
+        btn_row = QtWidgets.QHBoxLayout()
+        self.delete_landmark_btn = QtWidgets.QPushButton("Delete landmarks")
+        self.delete_landmark_btn.clicked.connect(self.on_delete_landmarks)
+        self.delete_gov_btn = QtWidgets.QPushButton("Delete government")
+        self.delete_gov_btn.clicked.connect(self.on_delete_government)
+        self.delete_locals_btn = QtWidgets.QPushButton("Delete locals")
+        self.delete_locals_btn.clicked.connect(self.on_delete_locals)
+        btn_row.addWidget(self.delete_landmark_btn)
+        btn_row.addWidget(self.delete_gov_btn)
+        btn_row.addWidget(self.delete_locals_btn)
+        geo_layout.addLayout(btn_row)
+
         geo_layout.addWidget(splitter, 1)
 
         tabs.addTab(geo_tab, "Geo")
@@ -206,18 +226,73 @@ class MainWindow(QtWidgets.QMainWindow):
         self.locals_list.clear()
         if not text and code is None:
             return
-        for name, city, country_name in search_landmarks(text or "", code, limit=50):
-            label = f"{name}" + (f" — {city}" if city else "") + f" ({country_name})"
-            self.landmark_list.addItem(label)
-        for office, person_name, country_name in search_government(text or "", code, limit=50):
-            self.gov_list.addItem(f"{office}: {person_name} ({country_name})")
+        for _id, name, city, country_name in search_landmarks(text or "", code, limit=50):
+            item = QtWidgets.QListWidgetItem(
+                f"{name}" + (f" — {city}" if city else "") + f" ({country_name})"
+            )
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, ("landmark", _id))
+            self.landmark_list.addItem(item)
+        for _id, office, person_name, country_name in search_government(text or "", code, limit=50):
+            item = QtWidgets.QListWidgetItem(f"{office}: {person_name} ({country_name})")
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, ("government", _id))
+            self.gov_list.addItem(item)
         for _id, first, last, email, city, country in search_people_by_country(text or "", code, limit=50):
-            self.locals_list.addItem(f"{first} {last} <{email}> — {city}, {country}")
+            item = QtWidgets.QListWidgetItem(f"{first} {last} <{email}> — {city}, {country}")
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, ("person", _id))
+            self.locals_list.addItem(item)
         try:
             self.media_player.stop()
             self.media_player.play()
         except Exception:
             pass
+
+    @QtCore.Slot()
+    def on_delete_people(self):
+        # People tab list doesn't store IDs; perform a fresh filtered query to get IDs
+        text = self.search_edit.text().strip()
+        results = search_people(text, limit=500)
+        selected_rows = set(idx.row() for idx in self.list_view.selectedIndexes())
+        ids = [r[0] for i, r in enumerate(results) if i in selected_rows]
+        if not ids:
+            return
+        deleted = delete_people(ids)
+        self.on_search()
+
+    @QtCore.Slot()
+    def on_delete_landmarks(self):
+        ids = []
+        for item in self.landmark_list.selectedItems():
+            kind, _id = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if kind == "landmark":
+                ids.append(int(_id))
+        if not ids:
+            return
+        delete_landmarks(ids)
+        self.on_geo_search()
+
+    @QtCore.Slot()
+    def on_delete_government(self):
+        ids = []
+        for item in self.gov_list.selectedItems():
+            kind, _id = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if kind == "government":
+                ids.append(int(_id))
+        if not ids:
+            return
+        delete_government(ids)
+        self.on_geo_search()
+
+    @QtCore.Slot()
+    def on_delete_locals(self):
+        ids = []
+        for item in self.locals_list.selectedItems():
+            kind, _id = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if kind == "person":
+                ids.append(int(_id))
+        if not ids:
+            return
+        delete_people(ids)
+        self.on_geo_search()
 
 
 def run():

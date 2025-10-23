@@ -35,3 +35,10 @@ Place a demo video at `resources/forensic.mp4` (or change the path in `config.js
   - Select a country or keep "All countries".
   - Type to search landmarks (left), government officials (middle), and locals (right).
   - The video auto-plays with each search.
+
+## Deleting records
+- People tab: select one or more rows and click "Delete selected".
+- Geo tab:
+  - Landmarks list: select and click "Delete landmarks".
+  - Government list: select and click "Delete government".
+  - Locals list: select and click "Delete locals".
