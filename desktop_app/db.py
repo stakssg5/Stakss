@@ -269,6 +269,104 @@ def search_people_exact(name: str, limit: int = 25) -> List[Tuple[int, str, str,
         conn.close()
 
 
+def search_people_by_email(query: str, *, exact: bool = False, limit: int = 25) -> List[Tuple[int, str, str, str, str, str]]:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        if exact:
+            cur.execute(
+                """
+                SELECT id, first_name, last_name, email, city, country
+                FROM person
+                WHERE lower(email) = ?
+                ORDER BY last_name, first_name
+                LIMIT ?
+                """,
+                (query.strip().lower(), limit),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, first_name, last_name, email, city, country
+                FROM person
+                WHERE lower(email) LIKE ?
+                ORDER BY last_name, first_name
+                LIMIT ?
+                """,
+                (f"%{query.strip().lower()}%", limit),
+            )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def search_people_by_city(query: str, *, exact: bool = False, limit: int = 25) -> List[Tuple[int, str, str, str, str, str]]:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        if exact:
+            cur.execute(
+                """
+                SELECT id, first_name, last_name, email, city, country
+                FROM person
+                WHERE lower(city) = ?
+                ORDER BY last_name, first_name
+                LIMIT ?
+                """,
+                (query.strip().lower(), limit),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, first_name, last_name, email, city, country
+                FROM person
+                WHERE lower(city) LIKE ?
+                ORDER BY last_name, first_name
+                LIMIT ?
+                """,
+                (f"%{query.strip().lower()}%", limit),
+            )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def search_people_by_country_name(query: str, *, exact: bool = False, limit: int = 25) -> List[Tuple[int, str, str, str, str, str]]:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        if exact:
+            cur.execute(
+                """
+                SELECT id, first_name, last_name, email, city, country
+                FROM person
+                WHERE lower(country) = ?
+                ORDER BY last_name, first_name
+                LIMIT ?
+                """,
+                (query.strip().lower(), limit),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, first_name, last_name, email, city, country
+                FROM person
+                WHERE lower(country) LIKE ?
+                ORDER BY last_name, first_name
+                LIMIT ?
+                """,
+                (f"%{query.strip().lower()}%", limit),
+            )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def search_people_by_id(person_id: int) -> List[Tuple[int, str, str, str, str, str]]:
+    person = get_person(person_id)
+    return [person] if person else []
+
+
 def list_countries() -> List[Tuple[str, str]]:
     conn = get_connection()
     try:
