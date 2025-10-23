@@ -207,7 +207,7 @@ def list_countries() -> List[Tuple[str, str]]:
         conn.close()
 
 
-def search_landmarks(query: str, country_code: Optional[str] = None, limit: int = 50) -> List[Tuple[str, str, str]]:
+def search_landmarks(query: str, country_code: Optional[str] = None, limit: int = 50) -> List[Tuple[int, str, str, str]]:
     q = f"%{query.lower()}%"
     conn = get_connection()
     try:
@@ -215,7 +215,7 @@ def search_landmarks(query: str, country_code: Optional[str] = None, limit: int 
         if country_code:
             cur.execute(
                 """
-                SELECT l.name, COALESCE(l.city, ''), c.name
+                SELECT l.id, l.name, COALESCE(l.city, ''), c.name
                 FROM landmark l JOIN country c ON c.code = l.country_code
                 WHERE l.country_code = ? AND lower(l.name) LIKE ?
                 ORDER BY l.name
@@ -226,7 +226,7 @@ def search_landmarks(query: str, country_code: Optional[str] = None, limit: int 
         else:
             cur.execute(
                 """
-                SELECT l.name, COALESCE(l.city, ''), c.name
+                SELECT l.id, l.name, COALESCE(l.city, ''), c.name
                 FROM landmark l JOIN country c ON c.code = l.country_code
                 WHERE lower(l.name) LIKE ?
                 ORDER BY l.name
@@ -239,7 +239,7 @@ def search_landmarks(query: str, country_code: Optional[str] = None, limit: int 
         conn.close()
 
 
-def search_government(query: str, country_code: Optional[str] = None, limit: int = 50) -> List[Tuple[str, str, str]]:
+def search_government(query: str, country_code: Optional[str] = None, limit: int = 50) -> List[Tuple[int, str, str, str]]:
     q = f"%{query.lower()}%"
     conn = get_connection()
     try:
@@ -247,7 +247,7 @@ def search_government(query: str, country_code: Optional[str] = None, limit: int
         if country_code:
             cur.execute(
                 """
-                SELECT g.office, g.person_name, c.name
+                SELECT g.id, g.office, g.person_name, c.name
                 FROM government g JOIN country c ON c.code = g.country_code
                 WHERE g.country_code = ? AND (lower(g.office) LIKE ? OR lower(g.person_name) LIKE ?)
                 ORDER BY g.office
@@ -258,7 +258,7 @@ def search_government(query: str, country_code: Optional[str] = None, limit: int
         else:
             cur.execute(
                 """
-                SELECT g.office, g.person_name, c.name
+                SELECT g.id, g.office, g.person_name, c.name
                 FROM government g JOIN country c ON c.code = g.country_code
                 WHERE lower(g.office) LIKE ? OR lower(g.person_name) LIKE ?
                 ORDER BY g.office
@@ -281,7 +281,7 @@ def search_people_by_country(query: str, country_code: Optional[str], limit: int
                 """
                 SELECT id, first_name, last_name, email, city, country
                 FROM person
-                WHERE country = ? AND (
+                WHERE (SELECT name FROM country WHERE code = ?) = country AND (
                       lower(first_name) LIKE ? OR lower(last_name) LIKE ? OR lower(email) LIKE ? OR lower(city) LIKE ?
                 )
                 ORDER BY last_name, first_name
@@ -301,5 +301,44 @@ def search_people_by_country(query: str, country_code: Optional[str], limit: int
                 (q, q, q, q, limit),
             )
         return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def delete_people(ids: List[int]) -> int:
+    if not ids:
+        return 0
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.executemany("DELETE FROM person WHERE id = ?", [(i,) for i in ids])
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def delete_landmarks(ids: List[int]) -> int:
+    if not ids:
+        return 0
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.executemany("DELETE FROM landmark WHERE id = ?", [(i,) for i in ids])
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def delete_government(ids: List[int]) -> int:
+    if not ids:
+        return 0
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.executemany("DELETE FROM government WHERE id = ?", [(i,) for i in ids])
+        conn.commit()
+        return cur.rowcount or 0
     finally:
         conn.close()
