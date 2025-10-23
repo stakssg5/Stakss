@@ -15,6 +15,9 @@ pyinstaller --noconfirm ^
   --onefile ^
   --add-data "config.json;." ^
   --add-data "resources\\forensic.mp4;resources" ^
+  --add-data "resources\\*.png;resources" ^
+  --add-data "resources\\*.jpg;resources" ^
+  --add-data "resources\\*.jpeg;resources" ^
   --collect-all PySide6 ^
   main.py
 
