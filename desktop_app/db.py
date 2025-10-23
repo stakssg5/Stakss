@@ -58,10 +58,25 @@ def init_db() -> None:
             )
             """
         )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS camera (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                location TEXT,
+                country_code TEXT NOT NULL,
+                url TEXT NOT NULL,
+                is_public INTEGER NOT NULL DEFAULT 1,
+                is_fixed INTEGER NOT NULL DEFAULT 1,
+                FOREIGN KEY(country_code) REFERENCES country(code)
+            )
+            """
+        )
         # Helpful search indexes
         cur.execute("CREATE INDEX IF NOT EXISTS idx_person_country ON person(country)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_landmark_country ON landmark(country_code)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_gov_country ON government(country_code)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_camera_country ON camera(country_code)")
         conn.commit()
     finally:
         conn.close()
@@ -169,6 +184,28 @@ def seed_geo_if_empty() -> None:
                 gov_rows,
             )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def seed_camera_if_empty() -> None:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(1) FROM camera")
+        if (cur.fetchone() or [0])[0] == 0:
+            # Use demo video path for sample cameras; users can replace with real, permissioned streams
+            demo_url = "resources/forensic.mp4"
+            cams = [
+                ("Times Square Demo Cam", "New York", "US", demo_url, 1, 1),
+                ("London Bridge Demo Cam", "London", "GB", demo_url, 1, 1),
+                ("Paris Center Demo Cam", "Paris", "FR", demo_url, 1, 1),
+            ]
+            cur.executemany(
+                "INSERT INTO camera(name, location, country_code, url, is_public, is_fixed) VALUES (?,?,?,?,?,?)",
+                cams,
+            )
+            conn.commit()
     finally:
         conn.close()
 
@@ -338,6 +375,66 @@ def delete_government(ids: List[int]) -> int:
     try:
         cur = conn.cursor()
         cur.executemany("DELETE FROM government WHERE id = ?", [(i,) for i in ids])
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def search_cameras(
+    query: str,
+    country_code: Optional[str] = None,
+    public_only: bool = False,
+    fixed_only: bool = False,
+    limit: int = 100,
+) -> List[Tuple[int, str, str, str, str, int, int]]:
+    q = f"%{(query or '').lower()}%"
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        clauses = ["(lower(cam.name) LIKE ? OR lower(cam.location) LIKE ?)"]
+        params: List[object] = [q, q]
+        if country_code:
+            clauses.append("cam.country_code = ?")
+            params.append(country_code)
+        if public_only:
+            clauses.append("cam.is_public = 1")
+        if fixed_only:
+            clauses.append("cam.is_fixed = 1")
+        where = " AND ".join(clauses)
+        sql = (
+            "SELECT cam.id, cam.name, COALESCE(cam.location, ''), c.name, cam.url, cam.is_public, cam.is_fixed "
+            "FROM camera cam JOIN country c ON c.code = cam.country_code "
+            f"WHERE {where} ORDER BY cam.name LIMIT ?"
+        )
+        params.append(limit)
+        cur.execute(sql, params)
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def insert_camera(name: str, location: str, country_code: str, url: str, is_public: bool, is_fixed: bool) -> int:
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO camera(name, location, country_code, url, is_public, is_fixed) VALUES (?,?,?,?,?,?)",
+            (name, location, country_code, url, 1 if is_public else 0, 1 if is_fixed else 0),
+        )
+        conn.commit()
+        return int(cur.lastrowid)
+    finally:
+        conn.close()
+
+
+def delete_cameras(ids: List[int]) -> int:
+    if not ids:
+        return 0
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.executemany("DELETE FROM camera WHERE id = ?", [(i,) for i in ids])
         conn.commit()
         return cur.rowcount or 0
     finally:

@@ -10,6 +10,7 @@ from db import (
     init_db,
     seed_if_empty,
     seed_geo_if_empty,
+    seed_camera_if_empty,
     search_people,
     list_countries,
     search_landmarks,
@@ -18,6 +19,9 @@ from db import (
     delete_people,
     delete_landmarks,
     delete_government,
+    search_cameras,
+    insert_camera,
+    delete_cameras,
 )
 
 APP_DIR = Path(__file__).resolve().parent
@@ -190,11 +194,68 @@ class MainWindow(QtWidgets.QMainWindow):
 
         tabs.addTab(geo_tab, "Geo")
 
+        # Tab 3: Cameras
+        cam_tab = QtWidgets.QWidget()
+        cam_layout = QtWidgets.QVBoxLayout(cam_tab)
+
+        cam_controls = QtWidgets.QHBoxLayout()
+        self.cam_country = QtWidgets.QComboBox()
+        self.cam_country.addItem("All countries", userData=None)
+        for code, name in list_countries():
+            self.cam_country.addItem(f"{name} ({code})", userData=code)
+        self.cam_query = QtWidgets.QLineEdit()
+        self.cam_query.setPlaceholderText("Search cameras by name or location…")
+        self.cam_public = QtWidgets.QCheckBox("Public only")
+        self.cam_public.setChecked(True)
+        self.cam_fixed = QtWidgets.QCheckBox("Fixed only")
+        self.cam_fixed.setChecked(True)
+        cam_controls.addWidget(QtWidgets.QLabel("Country:"))
+        cam_controls.addWidget(self.cam_country, 1)
+        cam_controls.addWidget(self.cam_query, 2)
+        cam_controls.addWidget(self.cam_public)
+        cam_controls.addWidget(self.cam_fixed)
+        cam_layout.addLayout(cam_controls)
+
+        cam_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        self.cam_list = QtWidgets.QListWidget()
+        self.cam_list.setMinimumWidth(360)
+        cam_split.addWidget(self.cam_list)
+
+        self.cam_video = QtMultimediaWidgets.QVideoWidget()
+        cam_split.addWidget(self.cam_video)
+        cam_layout.addWidget(cam_split, 1)
+
+        # Media player for cameras (separate from main video)
+        self.cam_player = QtMultimedia.QMediaPlayer()
+        try:
+            self.cam_audio = QtMultimedia.QAudioOutput()
+            self.cam_player.setAudioOutput(self.cam_audio)
+        except Exception:
+            self.cam_audio = None
+        self.cam_player.setVideoOutput(self.cam_video)
+
+        cam_btns = QtWidgets.QHBoxLayout()
+        self.cam_add_btn = QtWidgets.QPushButton("Add camera")
+        self.cam_del_btn = QtWidgets.QPushButton("Delete selected")
+        cam_btns.addWidget(self.cam_add_btn)
+        cam_btns.addWidget(self.cam_del_btn)
+        cam_layout.addLayout(cam_btns)
+
+        tabs.addTab(cam_tab, "Cameras")
+
         # Wire search
         self.search_edit.textChanged.connect(self.on_search)
         self.list_view.itemSelectionChanged.connect(self.on_select)
         self.geo_query.textChanged.connect(self.on_geo_search)
         self.country_combo.currentIndexChanged.connect(self.on_geo_search)
+
+        self.cam_query.textChanged.connect(self.on_cam_search)
+        self.cam_country.currentIndexChanged.connect(self.on_cam_search)
+        self.cam_public.stateChanged.connect(self.on_cam_search)
+        self.cam_fixed.stateChanged.connect(self.on_cam_search)
+        self.cam_list.itemSelectionChanged.connect(self.on_cam_select)
+        self.cam_add_btn.clicked.connect(self.on_cam_add)
+        self.cam_del_btn.clicked.connect(self.on_cam_delete)
 
     @QtCore.Slot()
     def on_search(self):
@@ -245,6 +306,92 @@ class MainWindow(QtWidgets.QMainWindow):
             self.media_player.play()
         except Exception:
             pass
+
+    @QtCore.Slot()
+    def on_cam_search(self):
+        text = self.cam_query.text().strip()
+        code = self.cam_country.currentData()
+        self.cam_list.clear()
+        cams = search_cameras(
+            query=text,
+            country_code=code,
+            public_only=self.cam_public.isChecked(),
+            fixed_only=self.cam_fixed.isChecked(),
+            limit=200,
+        )
+        for _id, name, location, country_name, url, is_public, is_fixed in cams:
+            label = f"{name} — {location} ({country_name})"
+            item = QtWidgets.QListWidgetItem(label)
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, {"id": _id, "url": url})
+            self.cam_list.addItem(item)
+
+    @QtCore.Slot()
+    def on_cam_select(self):
+        items = self.cam_list.selectedItems()
+        if not items:
+            return
+        data = items[0].data(QtCore.Qt.ItemDataRole.UserRole)
+        url = data.get("url")
+        if not url:
+            return
+        qurl = QtCore.QUrl.fromLocalFile(str((APP_DIR / url).resolve())) if not url.startswith("http") else QtCore.QUrl(url)
+        try:
+            self.cam_player.setSource(qurl)
+        except Exception:
+            self.cam_player.setMedia(QtMultimedia.QMediaContent(qurl))
+        self.cam_player.stop()
+        self.cam_player.play()
+
+    @QtCore.Slot()
+    def on_cam_add(self):
+        # Simple add dialog
+        dlg = QtWidgets.QDialog(self)
+        dlg.setWindowTitle("Add camera")
+        layout = QtWidgets.QFormLayout(dlg)
+        name = QtWidgets.QLineEdit()
+        location = QtWidgets.QLineEdit()
+        country = QtWidgets.QComboBox()
+        for code, cname in list_countries():
+            country.addItem(f"{cname} ({code})", userData=code)
+        url = QtWidgets.QLineEdit()
+        is_public = QtWidgets.QCheckBox()
+        is_public.setChecked(True)
+        is_fixed = QtWidgets.QCheckBox()
+        is_fixed.setChecked(True)
+        layout.addRow("Name", name)
+        layout.addRow("Location", location)
+        layout.addRow("Country", country)
+        layout.addRow("Stream URL or File Path", url)
+        layout.addRow("Public", is_public)
+        layout.addRow("Fixed", is_fixed)
+        btns = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        layout.addRow(btns)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        if dlg.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        if not name.text().strip() or not url.text().strip():
+            return
+        insert_camera(
+            name=name.text().strip(),
+            location=location.text().strip(),
+            country_code=country.currentData(),
+            url=url.text().strip(),
+            is_public=is_public.isChecked(),
+            is_fixed=is_fixed.isChecked(),
+        )
+        self.on_cam_search()
+
+    @QtCore.Slot()
+    def on_cam_delete(self):
+        ids = []
+        for item in self.cam_list.selectedItems():
+            data = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            ids.append(int(data.get("id")))
+        if not ids:
+            return
+        delete_cameras(ids)
+        self.on_cam_search()
 
     @QtCore.Slot()
     def on_delete_people(self):
@@ -300,6 +447,7 @@ def run():
     init_db()
     seed_if_empty(200)
     seed_geo_if_empty()
+    seed_camera_if_empty()
 
     app = QtWidgets.QApplication([])
 

@@ -5,6 +5,7 @@ A simple desktop application that:
 - Lets you search a local SQLite database of random people
 - Automatically plays a forensic demo video whenever a search occurs
  - Includes a Geo tab to browse/search landmarks, government roles, and locals by country
+ - Includes a Cameras tab to catalog/search lawful public or user-provided streams and play them
 
 ## Run (Linux/Mac)
 ```bash
@@ -42,3 +43,12 @@ Place a demo video at `resources/forensic.mp4` (or change the path in `config.js
   - Landmarks list: select and click "Delete landmarks".
   - Government list: select and click "Delete government".
   - Locals list: select and click "Delete locals".
+
+## Cameras (lawful catalog)
+- Catalog public or permissioned camera streams; no scanning/hacking.
+- Cameras tab:
+  - Filter by country, public-only, fixed-only.
+  - Search by name/location; select to play.
+  - Add camera: provide name, location (optional), country, and URL/file path.
+  - Delete selected cameras.
+  - Sample demo entries use the local `resources/forensic.mp4` to illustrate playback.
