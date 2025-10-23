@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .services.prices import PriceService
 from .services.balances import BalanceService
+from .services.cc import CreditCardService
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -77,6 +78,28 @@ def mock_transfer(req: TransferRequest, authorization: str | None = Header(defau
             "amount": req.amount,
         },
     }
+
+
+# ----- Credit card generator (demo, Luhn-valid) -----
+class CcGenerateRequest(BaseModel):
+    network: Optional[str] = Field(default=None, description="visa, mastercard, amex, discover, jcb, diners")
+    bin: Optional[str] = Field(default=None, description="Optional numeric BIN/prefix (2-12 digits)")
+    length: Optional[int] = Field(default=None, description="Card length (12-19). Defaults per network or 16.")
+    quantity: int = Field(default=1, ge=1, le=100, description="How many to generate")
+
+
+@app.post("/api/cc/generate")
+def cc_generate(req: CcGenerateRequest) -> Dict[str, Any]:
+    try:
+        cards = CreditCardService().generate_cards(
+            network=req.network,
+            bin_prefix=req.bin,
+            length=req.length,
+            quantity=req.quantity,
+        )
+        return {"cards": cards}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # Mount static frontend (Telegram Mini App)
