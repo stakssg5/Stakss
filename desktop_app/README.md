@@ -4,6 +4,7 @@ A simple desktop application that:
 - Shows a login screen (credentials in `config.json`)
 - Lets you search a local SQLite database of random people
 - Automatically plays a forensic demo video whenever a search occurs
+ - Includes a Geo tab to browse/search landmarks, government roles, and locals by country
 
 ## Run (Linux/Mac)
 ```bash
@@ -27,3 +28,10 @@ build_windows.bat
 ```
 
 Place a demo video at `resources/forensic.mp4` (or change the path in `config.json`).
+
+## Geo features
+- Countries, landmarks, and sample government roles are seeded on first run.
+- Use the Geo tab:
+  - Select a country or keep "All countries".
+  - Type to search landmarks (left), government officials (middle), and locals (right).
+  - The video auto-plays with each search.

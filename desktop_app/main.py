@@ -6,7 +6,16 @@ from typing import Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets, QtMultimedia, QtMultimediaWidgets
 
-from db import init_db, seed_if_empty, search_people
+from db import (
+    init_db,
+    seed_if_empty,
+    seed_geo_if_empty,
+    search_people,
+    list_countries,
+    search_landmarks,
+    search_government,
+    search_people_by_country,
+)
 
 APP_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = APP_DIR / "config.json"
@@ -65,11 +74,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("Forensic Search Console")
         self.resize(1000, 640)
 
-        central = QtWidgets.QWidget()
-        self.setCentralWidget(central)
-        root = QtWidgets.QHBoxLayout(central)
+        tabs = QtWidgets.QTabWidget()
+        self.setCentralWidget(tabs)
 
-        # Left: search panel
+        # Tab 1: People search
+        people_tab = QtWidgets.QWidget()
+        ppl_layout = QtWidgets.QHBoxLayout(people_tab)
+
         left = QtWidgets.QWidget()
         left_layout = QtWidgets.QVBoxLayout(left)
 
@@ -87,9 +98,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.list_view = QtWidgets.QListWidget()
         left_layout.addWidget(self.list_view, 1)
 
-        root.addWidget(left, 3)
+        ppl_layout.addWidget(left, 3)
 
-        # Right: video panel
         right = QtWidgets.QWidget()
         right_layout = QtWidgets.QVBoxLayout(right)
 
@@ -121,11 +131,50 @@ class MainWindow(QtWidgets.QMainWindow):
             placeholder.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             right_layout.addWidget(placeholder)
 
-        root.addWidget(right, 5)
+        ppl_layout.addWidget(right, 5)
+
+        tabs.addTab(people_tab, "People")
+
+        # Tab 2: Geo search (landmarks, government, locals)
+        geo_tab = QtWidgets.QWidget()
+        geo_layout = QtWidgets.QVBoxLayout(geo_tab)
+
+        controls = QtWidgets.QHBoxLayout()
+        self.country_combo = QtWidgets.QComboBox()
+        self.country_combo.addItem("All countries", userData=None)
+        for code, name in list_countries():
+            self.country_combo.addItem(f"{name} ({code})", userData=code)
+        controls.addWidget(QtWidgets.QLabel("Country:"))
+        controls.addWidget(self.country_combo, 1)
+
+        self.geo_query = QtWidgets.QLineEdit()
+        self.geo_query.setPlaceholderText("Find landmarks, government officials, or locals…")
+        controls.addWidget(self.geo_query, 2)
+
+        geo_layout.addLayout(controls)
+
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        # Landmarks list
+        self.landmark_list = QtWidgets.QListWidget()
+        self.landmark_list.setMinimumWidth(280)
+        splitter.addWidget(self.landmark_list)
+        # Government list
+        self.gov_list = QtWidgets.QListWidget()
+        self.gov_list.setMinimumWidth(280)
+        splitter.addWidget(self.gov_list)
+        # Locals list
+        self.locals_list = QtWidgets.QListWidget()
+        splitter.addWidget(self.locals_list)
+
+        geo_layout.addWidget(splitter, 1)
+
+        tabs.addTab(geo_tab, "Geo")
 
         # Wire search
         self.search_edit.textChanged.connect(self.on_search)
         self.list_view.itemSelectionChanged.connect(self.on_select)
+        self.geo_query.textChanged.connect(self.on_geo_search)
+        self.country_combo.currentIndexChanged.connect(self.on_geo_search)
 
     @QtCore.Slot()
     def on_search(self):
@@ -148,11 +197,34 @@ class MainWindow(QtWidgets.QMainWindow):
         # Potential place to seek or overlay details in the future
         pass
 
+    @QtCore.Slot()
+    def on_geo_search(self):
+        text = self.geo_query.text().strip()
+        code = self.country_combo.currentData()
+        self.landmark_list.clear()
+        self.gov_list.clear()
+        self.locals_list.clear()
+        if not text and code is None:
+            return
+        for name, city, country_name in search_landmarks(text or "", code, limit=50):
+            label = f"{name}" + (f" — {city}" if city else "") + f" ({country_name})"
+            self.landmark_list.addItem(label)
+        for office, person_name, country_name in search_government(text or "", code, limit=50):
+            self.gov_list.addItem(f"{office}: {person_name} ({country_name})")
+        for _id, first, last, email, city, country in search_people_by_country(text or "", code, limit=50):
+            self.locals_list.addItem(f"{first} {last} <{email}> — {city}, {country}")
+        try:
+            self.media_player.stop()
+            self.media_player.play()
+        except Exception:
+            pass
+
 
 def run():
     config = load_config()
     init_db()
     seed_if_empty(200)
+    seed_geo_if_empty()
 
     app = QtWidgets.QApplication([])
 
