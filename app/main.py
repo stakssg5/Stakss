@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import random
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Header
@@ -86,6 +87,8 @@ class CcGenerateRequest(BaseModel):
     bin: Optional[str] = Field(default=None, description="Optional numeric BIN/prefix (2-12 digits)")
     length: Optional[int] = Field(default=None, description="Card length (12-19). Defaults per network or 16.")
     quantity: int = Field(default=1, ge=1, le=100, description="How many to generate")
+    include_zip: bool = Field(default=False, description="Include US ZIP alongside each number")
+    zip_plus4: bool = Field(default=False, description="When include_zip, add ZIP+4 (e.g., 94105-1234)")
 
 
 @app.post("/api/cc/generate")
@@ -97,6 +100,17 @@ def cc_generate(req: CcGenerateRequest) -> Dict[str, Any]:
             length=req.length,
             quantity=req.quantity,
         )
+        if req.include_zip:
+            def _gen_zip(plus4: bool) -> str:
+                base = random.randint(1, 99999)
+                zip5 = f"{base:05d}"
+                if plus4:
+                    ext = random.randint(1, 9999)
+                    return f"{zip5}-{ext:04d}"
+                return zip5
+
+            lines = [f"{num} | ZIP {_gen_zip(req.zip_plus4)}" for num in cards]
+            return {"cards": lines}
         return {"cards": cards}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

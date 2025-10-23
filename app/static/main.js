@@ -54,6 +54,8 @@ const ccNetwork = document.getElementById('cc-network');
 const ccBin = document.getElementById('cc-bin');
 const ccLen = document.getElementById('cc-length');
 const ccQty = document.getElementById('cc-qty');
+const ccZip = document.getElementById('cc-zip');
+const ccZip4 = document.getElementById('cc-zip4');
 
 if (ccBtn) {
   ccBtn.addEventListener('click', async () => {
@@ -66,6 +68,8 @@ if (ccBtn) {
         bin: ccBin.value || null,
         length: ccLen.value ? Number(ccLen.value) : null,
         quantity: ccQty.value ? Number(ccQty.value) : 5,
+        include_zip: ccZip ? !!ccZip.checked : false,
+        zip_plus4: ccZip4 ? !!ccZip4.checked : false,
       };
       const resp = await fetch('/api/cc/generate', {
         method: 'POST',

@@ -69,6 +69,14 @@
             <input id="cc-length" class="input" placeholder="Length (12-19, optional)" />
             <input id="cc-qty" class="input" placeholder="Qty" value="5" />
           </div>
+          <div style="display:flex;gap:8px">
+            <label class="input" style="display:flex;align-items:center;gap:8px;padding:10px 12px">
+              <input type="checkbox" id="cc-zip" /> Include ZIP
+            </label>
+            <label class="input" style="display:flex;align-items:center;gap:8px;padding:10px 12px">
+              <input type="checkbox" id="cc-zip4" /> ZIP+4
+            </label>
+          </div>
           <button id="cc-generate" class="primary">Generate CC numbers</button>
           <pre id="cc-output" style="white-space:pre-wrap;margin:0;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"></pre>
         </div>
