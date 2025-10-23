@@ -1,0 +1,22 @@
+@echo off
+setlocal
+
+REM Build Windows executable using PyInstaller
+if not exist .venv (
+  py -3 -m venv .venv
+)
+call .venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+
+REM Include multimedia plugins by collecting PySide6 data
+pyinstaller --noconfirm ^
+  --name ForensicSearch ^
+  --onefile ^
+  --add-data "config.json;." ^
+  --add-data "resources\\forensic.mp4;resources" ^
+  --collect-all PySide6 ^
+  main.py
+
+echo Build complete. Dist located at %CD%\dist
+endlocal

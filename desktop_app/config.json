@@ -1,0 +1,12 @@
+{
+  "login": {
+    "username": "admin",
+    "password": "admin123"
+  },
+  "database": {
+    "path": "people.db"
+  },
+  "video": {
+    "path": "resources/forensic.mp4"
+  }
+}
