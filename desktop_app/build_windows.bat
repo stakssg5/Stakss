@@ -10,6 +10,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
 REM Include multimedia plugins by collecting PySide6 data
+REM To make config writable/sharable, you may prefer one-folder (remove --onefile)
 pyinstaller --noconfirm ^
   --name ForensicSearch ^
   --onefile ^

@@ -16,5 +16,8 @@
     "provider": "ipapi.co", 
     "endpoint": "https://ipapi.co/{target}/json/",
     "api_key": null
+  },
+  "auth": {
+    "require_login": true
   }
 }

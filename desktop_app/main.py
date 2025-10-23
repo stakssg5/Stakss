@@ -217,6 +217,9 @@ class MainWindow(QtWidgets.QMainWindow):
         act_credentials = QtWidgets.QAction("Credentials…", self)
         act_credentials.triggered.connect(self.open_settings)
         settings_menu.addAction(act_credentials)
+        act_toggle_login = QtWidgets.QAction("Require login (toggle)", self)
+        act_toggle_login.triggered.connect(self.toggle_require_login)
+        settings_menu.addAction(act_toggle_login)
 
         tabs = QtWidgets.QTabWidget()
         self.setCentralWidget(tabs)
@@ -687,6 +690,14 @@ class MainWindow(QtWidgets.QMainWindow):
         dlg.exec()
 
     @QtCore.Slot()
+    def toggle_require_login(self):
+        cfg = load_config()
+        current = bool(cfg.get("auth", {}).get("require_login", True))
+        cfg.setdefault("auth", {})
+        cfg["auth"]["require_login"] = not current
+        save_config(cfg)
+
+    @QtCore.Slot()
     def on_geoip_lookup(self):
         target = self.geoip_target.text().strip()
         if not target:
@@ -770,9 +781,10 @@ def run():
 
     branding_logo = config.get("branding", {}).get("logo_path")
     logo_path = (APP_DIR / branding_logo).resolve() if branding_logo else None
-    login = LoginDialog(config["login"]["username"], config.get("login", {}), logo_path=logo_path)
-    if login.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-        return
+    if config.get("auth", {}).get("require_login", True):
+        login = LoginDialog(config["login"]["username"], config.get("login", {}), logo_path=logo_path)
+        if login.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
 
     video_path = (APP_DIR / config["video"]["path"]).resolve()
     win = MainWindow(video_path)
