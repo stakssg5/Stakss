@@ -20,4 +20,6 @@ header h1{margin:0;font-size:28px}
 .input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid #2b3651;background:#11192a;color:var(--text)}
 .primary{width:100%;margin-top:14px;padding:14px 16px;border:0;border-radius:14px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:white;font-weight:700;cursor:pointer}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:#0a0f1b;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
-.fab{width:64px;height:64px;border-radius:50%;background:linear-gradient(90deg,var(--accent),var(--accent2));border:0;color:white;font-size:24px;margin-top:-24px}
+.tabs a{color:var(--text);text-decoration:none;background:transparent;border:0;padding:10px 8px;border-radius:10px}
+.tabs a:hover{background:#0f1724}
+.fab{display:flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:50%;background:linear-gradient(90deg,var(--accent),var(--accent2));border:0;color:white;font-size:24px;margin-top:-24px}
