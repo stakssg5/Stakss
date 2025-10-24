@@ -113,3 +113,25 @@ async function generateCards() {
 
 genCardsBtn.addEventListener('click', generateCards);
 loadBrands();
+
+// Trigger actions on Enter key
+addressInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    startBtn.click();
+  }
+});
+
+cardCountInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    generateCards();
+  }
+});
+
+cardBrandSel.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    generateCards();
+  }
+});
