@@ -106,6 +106,11 @@ def _generate_cvv(length: int) -> str:
     return str(random.randint(lower, upper))
 
 
+def _generate_zip() -> str:
+    # US 5-digit ZIP; avoid 00000 while allowing leading zeros
+    return str(random.randint(1, 99999)).zfill(5)
+
+
 def generate_card(brand: Optional[str] = None) -> Dict[str, str | int]:
     """Generate a single sandbox test card.
 
@@ -131,6 +136,7 @@ def generate_card(brand: Optional[str] = None) -> Dict[str, str | int]:
         "expiry_month": exp_month,
         "expiry_year": exp_year,
         "cvv": cvv,
+        "zip": _generate_zip(),
     }
 
 
