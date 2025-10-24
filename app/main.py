@@ -4,12 +4,12 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 import uuid
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .services.cards import generate_cards, CARD_SPECS
@@ -118,3 +118,56 @@ def mock_transfer(req: TransferRequest, authorization: str | None = Header(defau
 # Mount static frontend (Telegram Mini App)
 if STATIC_DIR.exists():
     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+
+# ----- Stripe Checkout (safe, PCI-compliant via Stripe-hosted UI) -----
+try:
+    import stripe  # type: ignore
+except Exception:
+    stripe = None  # defer import errors until used
+
+
+def _require_stripe() -> Any:
+    if stripe is None:
+        raise HTTPException(status_code=500, detail="Stripe library not installed")
+    if not os.getenv("STRIPE_SECRET_KEY"):
+        raise HTTPException(status_code=500, detail="STRIPE_SECRET_KEY not set")
+    stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
+    return stripe
+
+
+@app.post("/api/stripe/checkout")
+def create_checkout_session() -> Dict[str, Any]:
+    s = _require_stripe()
+    session = s.checkout.Session.create(
+        mode="payment",
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": "Pro Plan"},
+                "unit_amount": 5000,
+            },
+            "quantity": 1,
+        }],
+        success_url=os.getenv("STRIPE_SUCCESS_URL", "http://localhost:8000/?paid=1"),
+        cancel_url=os.getenv("STRIPE_CANCEL_URL", "http://localhost:8000/?canceled=1"),
+        automatic_tax={"enabled": False},
+    )
+    return {"url": session.url}
+
+
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request) -> JSONResponse:
+    s = _require_stripe()
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    if not endpoint_secret:
+        return JSONResponse({"received": True}, status_code=200)
+    try:
+        event = s.Webhook.construct_event(payload=payload, sig_header=sig_header, secret=endpoint_secret)
+    except Exception:
+        return JSONResponse({"error": "Invalid signature"}, status_code=400)
+    # Minimal handler
+    if event["type"] == "checkout.session.completed":
+        pass
+    return JSONResponse({"received": True}, status_code=200)

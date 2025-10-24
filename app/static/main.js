@@ -137,3 +137,26 @@ cardBrandSel.addEventListener('keydown', (e) => {
     generateCards();
   }
 });
+
+// ---- Stripe Checkout ----
+const buyBtn = document.getElementById('buy');
+if (buyBtn) {
+  buyBtn.addEventListener('click', async () => {
+    buyBtn.disabled = true;
+    buyBtn.textContent = 'Redirecting…';
+    try {
+      const resp = await fetch('/api/stripe/checkout', { method: 'POST' });
+      if (!resp.ok) throw new Error('Request failed');
+      const data = await resp.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No URL');
+      }
+    } catch (e) {
+      alert('Unable to start checkout');
+      buyBtn.disabled = false;
+      buyBtn.textContent = 'Buy Pro ($50)';
+    }
+  });
+}
