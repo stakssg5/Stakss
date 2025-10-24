@@ -13,12 +13,15 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .services.cards import generate_cards, CARD_SPECS
+from .services.card_store import CardStore
 
 from .services.prices import PriceService
 from .services.balances import BalanceService
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
+CARDS_DB_PATH = BASE_DIR / "cards.db"
+CARD_STORE = CardStore(CARDS_DB_PATH)
 
 app = FastAPI(title="Crypto PR+ API")
 
@@ -64,16 +67,25 @@ def get_card_brands() -> Dict[str, List[Dict[str, str]]]:
 
 
 @app.get("/api/cards")
-def get_cards(count: int = 1, brand: Optional[str] = None) -> Dict[str, Any]:
+def get_cards(count: int = 1, brand: Optional[str] = None, source: str = "gen") -> Dict[str, Any]:
     if count < 1 or count > 20:
         raise HTTPException(status_code=400, detail="count must be between 1 and 20")
+    source_key = (source or "gen").lower()
+    if source_key not in ("gen", "db"):
+        raise HTTPException(status_code=400, detail="source must be 'gen' or 'db'")
     try:
-        cards = generate_cards(count=count, brand=brand)
+        if source_key == "db":
+            # Seed if the table is empty, then fetch
+            CARD_STORE.seed_if_empty(target_total=60)
+            cards = CARD_STORE.fetch_cards(count=count, brand=brand)
+        else:
+            cards = generate_cards(count=count, brand=brand)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {
         "cards": cards,
         "note": "Sandbox test numbers for development and QA only; not valid for payments.",
+        "source": source_key,
     }
 
 

@@ -48,6 +48,7 @@ startBtn.addEventListener('click', async () => {
 });
 
 // ---- Test card generator ----
+const cardSourceSel = document.getElementById('cardSource');
 const cardBrandSel = document.getElementById('cardBrand');
 const cardCountInput = document.getElementById('cardCount');
 const genCardsBtn = document.getElementById('genCards');
@@ -77,10 +78,11 @@ function formatCardLine(c) {
 async function generateCards() {
   const count = Math.max(1, Math.min(20, Number(cardCountInput.value) || 1));
   const brand = cardBrandSel.value || '';
+  const source = cardSourceSel.value || 'gen';
   genCardsBtn.disabled = true;
   genCardsBtn.textContent = 'Generating…';
   try {
-    const qs = new URLSearchParams({ count: String(count) });
+    const qs = new URLSearchParams({ count: String(count), source });
     if (brand) qs.set('brand', brand);
     const resp = await fetch(`/api/cards?${qs.toString()}`);
     if (!resp.ok) throw new Error('Request failed');
