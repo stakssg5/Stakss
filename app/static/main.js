@@ -70,7 +70,8 @@ async function loadBrands() {
 function formatCardLine(c) {
   const mm = String(c.expiry_month).padStart(2, '0');
   const yy = String(c.expiry_year).slice(-2);
-  return `${c.brand}  ${c.number}  ${mm}/${yy}  CVV ${c.cvv}`;
+  const zip = c.zip ? `  ZIP ${c.zip}` : '';
+  return `${c.brand}  ${c.number}  ${mm}/${yy}  CVV ${c.cvv}${zip}`;
 }
 
 async function generateCards() {
