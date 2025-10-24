@@ -21,3 +21,15 @@ header h1{margin:0;font-size:28px}
 .primary{width:100%;margin-top:14px;padding:14px 16px;border:0;border-radius:14px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:white;font-weight:700;cursor:pointer}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:#0a0f1b;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
 .fab{width:64px;height:64px;border-radius:50%;background:linear-gradient(90deg,var(--accent),var(--accent2));border:0;color:white;font-size:24px;margin-top:-24px}
+
+/* Cards generator */
+.cards-gen{margin:28px 0;padding:16px;background:var(--panel);border-radius:16px}
+.section-title{margin:0 0 12px 0;font-size:18px}
+.row{display:flex;gap:12px;align-items:center}
+.select{padding:12px;border-radius:12px;border:1px solid #2b3651;background:#11192a;color:var(--text)}
+.input.small{width:96px}
+.card-list{margin-top:12px;display:grid;gap:8px}
+.card-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;background:#0f1524;border:1px solid #27324f;border-radius:10px;padding:10px}
+.card-line{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:14px}
+.copy-btn{background:transparent;border:1px solid #36466d;color:#9fb0d0;border-radius:8px;padding:6px 10px;cursor:pointer}
+.note{color:#9fb0d0;font-size:12px;margin-top:8px}
